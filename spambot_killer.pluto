@@ -111,10 +111,8 @@ chat.on_message(function(sender, reserved, message)
         if string.find(string.lower(message), w) then
             if player_kicking(sender_name) then
                 if util.current_unix_time_seconds() - get_timing(sender_name) > 60 then
-                    util.toast("Failed to kick spam bot: " .. sender_name)
-                    if log_in_chat then
-                        chat.send_message("Failed to kick spam bot: " .. sender_name, false, true, true)
-                    end
+                    util.toast("Failed to kick spam bot: " .. sender_name .. "\nTrying auto kick by Stand.")
+                    menu.trigger_commands("kick " .. sender_name)
                     remove_player(sender_name)
                 end
             else
@@ -124,10 +122,9 @@ chat.on_message(function(sender, reserved, message)
                 end
                 table.insert(kicking_players, { name = sender_name, time = util.current_unix_time_seconds() })
                 if players.exists(sender) then
-                    menu.trigger_commands("kick " .. sender_name)
+                    menu.trigger_commands("orgasmkick " .. sender_name)
                 end
             end
-
             return
         end
     end
