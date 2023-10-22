@@ -1,0 +1,154 @@
+---------- variables begin ----------
+
+local file_name = filesystem.scripts_dir() .. '\\Crow\\banned_words.txt'
+local banned_words = {}
+local GetNetGamePlayer_addr = nil
+local log_in_chat = false
+local kicking_list = true
+
+local kicking_players = {}
+
+local anormal_name = {
+    ["InvalidPlayer"] = 1,
+    ["UndiscoveredPlayer"] = 1,
+}
+
+local RGB = {}
+
+----------- variables end -----------
+
+
+
+---------- functions begin ----------
+
+local function file_exists(path)
+    local file = io.open(path, "rb")
+    if file then file:close() end
+    return file ~= nil
+end
+
+local function player_kicking(player)
+    for _, info in pairs(kicking_players) do
+        if player == info.name then
+            return true
+        end
+    end
+    return false
+end
+
+local function get_timing(player)
+    for _, info in pairs(kicking_players) do
+        if player == info.name then
+            return info.time
+        end
+    end
+    return 0
+end
+
+local function remove_player(player)
+    for _, info in pairs(kicking_players) do
+        if player == info.name then
+            table.remove(kicking_players, _)
+            return true
+        end
+    end
+    return false
+end
+
+----------- functions end -----------
+
+
+
+----------- startup begin -----------
+
+if not file_exists(file_name) then
+    util.toast(file_name .. ' was not found')
+    util.stop_script()
+else
+    file = io.open(file_name, "r")
+    for l in file:lines() do
+        table.insert(banned_words, string.lower(l))
+    end
+    file:close()
+end
+
+RGB.r = 1
+RGB.g = 0
+RGB.b = 1
+RGB.a = 1
+
+------------ startup end ------------
+
+
+
+------------- ui begin --------------
+
+CHAT_ON = menu.toggle(menu.my_root(), "Log to chat", { "kickedlogonchat" }, "Send log message to chat (ALL)", function()
+    log_in_chat = menu.get_value(CHAT_ON)
+end)
+
+LIST_ON = menu.toggle(menu.my_root(), "Kicking list", { "kickinglist" }, "Draw kicking list on your screen", function()
+    kicking_list = menu.get_value(LIST_ON)
+end, true)
+
+-------------- ui end ---------------
+
+
+
+---------- registers begin ----------
+
+chat.on_message(function(sender, reserved, message)
+    if sender == players.user() then
+        return
+    end
+
+    local sender_name = players.get_name(sender)
+    if sender_name in anormal_name then
+        return
+    end
+
+    for _, w in pairs(banned_words) do
+        if string.find(string.lower(message), w) then
+            if player_kicking(sender_name) then
+                if util.current_unix_time_seconds() - get_timing(sender_name) > 60 then
+                    util.toast("Failed to kick spam bot: " .. sender_name)
+                    if log_in_chat then
+                        chat.send_message("Failed to kick spam bot: " .. sender_name, false, true, true)
+                    end
+                    remove_player(sender_name)
+                end
+            else
+                util.toast("Kicking spam bot\nname:" .. sender_name.."\nRID:" .. players.get_rockstar_id(sender))
+                if log_in_chat then
+                    chat.send_message("Kicking spam bot\nname:" .. sender_name.."\nRID:" .. players.get_rockstar_id(sender), false, true, true)
+                end
+                table.insert(kicking_players, { name = sender_name, time = util.current_unix_time_seconds() })
+                if players.exists(sender) then
+                    menu.trigger_commands("kick " .. sender_name)
+                end
+            end
+
+            return
+        end
+    end
+end)
+
+players.on_leave(function (_, player_name)
+    if remove_player(player_name) then
+        util.toast("Kicked spam bot: " .. player_name .. (#kicking_players == 0 and "\nAll spam bot kicked out, enjoy!" or ""))
+        if log_in_chat then
+            chat.send_message("Kicked spam bot: " .. player_name .. (#kicking_players == 0 and "\nAll spam bot kicked out, enjoy!" or ""), false, true, true)
+        end
+    end
+end)
+
+util.create_tick_handler(function()
+    if not kicking_list or #kicking_players == 0 then return end
+    directx.draw_text(0, 0.3, "Spam bot being kicked:" .. #kicking_players, ALIGN_TOP_LEFT, 0.5, RGB, false)
+
+    for _, player in pairs(kicking_players) do
+        directx.draw_text(0, 0.3 + (0.02 * _), player.name, ALIGN_TOP_LEFT, 0.5, RGB, false)
+    end
+end)
+
+----------- registers end -----------
