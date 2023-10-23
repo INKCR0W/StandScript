@@ -1,0 +1,40 @@
+require "lib.Crow.natives"
+
+local start_view_mode = nil
+local target_view_mode = nil
+
+local view_modes = {
+    --[[
+        https://nativedb.dotindustries.dev/gta5/natives/0xA4FF579AC0E3AAAE?search=GET_FOLLOW_VEHICLE_CAM_VIEW_MODE
+
+        THIRD_PERSON_NEAR = 0,
+	    THIRD_PERSON_MEDIUM = 1,
+	    THIRD_PERSON_FAR = 2,
+	    CINEMATIC = 3,
+	    FIRST_PERSON = 4
+    ]]
+
+    [0] = {"第三人称（近）"},
+    [1] = {"第三人称（中）"},
+    [2] = {"第三人称（远）"},
+    [3] = {"电影视角"},
+    [4] = {"第一人称"},
+}
+
+menu.my_root():list_select("要切换到", {}, "在三种第三人称之间切换时有可能会出现相机距离错误的情况，我也不知道原因，不(wo)影(lan)响", view_modes, 1, function(value, menu_name, prev_value, click_type)
+    -- util.toast("Value changed to " .. lang.get_localised(menu_name) .. " (" .. value .. ")")
+    target_view_mode = value
+end)
+
+menu.toggle_loop(menu.my_root(), "换他鸭的", {}, '我是南通，南通加我', function()
+        local context = CAM1._GET_CAM_ACTIVE_VIEW_MODE_CONTEXT()
+        if start_view_mode == nil then
+            start_view_mode = CAM.GET_CAM_VIEW_MODE_FOR_CONTEXT(context)
+        end
+        if CAM.GET_CAM_VIEW_MODE_FOR_CONTEXT(context) ~= target_view_mode then
+            CAM.SET_CAM_VIEW_MODE_FOR_CONTEXT(context, target_view_mode)
+        end
+    end, function()
+        CAM.SET_CAM_VIEW_MODE_FOR_CONTEXT(CAM1._GET_CAM_ACTIVE_VIEW_MODE_CONTEXT(), start_view_mode)
+        start_view_mode = nil
+end)
